@@ -1,58 +1,60 @@
-import { Schema, model, type Document } from 'mongoose';
+import { Schema, model } from 'mongoose';
+import { Types } from 'mongoose'; 
 
-interface IComment extends Document {
-  commentText: string;
-  createdAt: Date;
-}
-
-interface IThought extends Document {
-  thoughtText: string;
-  thoughtAuthor: string;
-  createdAt: Date;
-  comments: IComment[];
-}
-
-// Define the schema for the Comment subdocument
-const commentSchema = new Schema<IComment>(
-  {
-    commentText: {
-      type: String,
-      required: true,
-      minlength: 1,
-      maxlength: 280,
-    },
+const reactionSchema = new Schema({
+  reactionId: {
+    type: Schema.Types.ObjectId,
+    default: () => new Types.ObjectId(),
   },
-  {
-    _id: false,
-    toJSON: { getters: true },
-    toObject: { getters: true },
-    timestamps: true,
-  }
-);
+  reactionBody: {
+    type: String,
+    required: true,
+    maxlength: 280,
+  },
+  username: {
+    type: String,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-const thoughtSchema = new Schema<IThought>(
+// Thought schema
+const thoughtSchema = new Schema(
   {
     thoughtText: {
       type: String,
       required: true,
-      minlength: 1,
       maxlength: 280,
-      trim: true,
+      minlength: 1,
     },
-    thoughtAuthor: {
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    username: {
       type: String,
       required: true,
-      trim: true,
     },
-    comments: [commentSchema],
+    userId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'User',  
+    },
+    reactions: [reactionSchema],
   },
   {
-    timestamps: true,
-    toJSON: { getters: true },
-    toObject: { getters: true },
+    toJSON: {
+      virtuals: true,
+    },
+    id: false,
   }
 );
-
-const Thought = model<IThought>('Thought', thoughtSchema);
+thoughtSchema.virtual("reactionCount").get(function () {
+  return this.reactions.length;
+});
+const Thought = model('Thought', thoughtSchema);
 
 export default Thought;

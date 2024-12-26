@@ -1,43 +1,173 @@
-import connection from '../config/connection.js';
-import { User, Application } from '../models/index.js';
-import { getRandomName, getRandomApplications } from './data.js';
+import mongoose from 'mongoose';
+import User from '../models/User';
+import Thought from '../models/Thought';
+import DataB from '../utils/DataB'; 
 
-connection.on('error', (err) => err);
+const seedDatabase = async () => {
+  try {
+    // Connect to MongoDB
+    await mongoose.connect('mongodb://127.0.0.1:27017/socialNetworkDB');
 
-connection.once('open', async () => {
-  console.log('connected');
-  // Delete the collections if they exist
-  let applicationCheck = await connection.db?.listCollections({ name: 'applications' }).toArray();
-  if (applicationCheck?.length) {
-    await connection.dropCollection('applications');
+    console.log('Connected to MongoDB');
+
+    // Clean database
+    await DataB();
+
+    // Create users
+    const users = await User.insertMany([
+      {
+        username: 'User1',
+        email: 'user1@example.com',
+      },
+      {
+        username: 'User2',
+        email: 'user2@example.com',
+      },
+      {
+        username: 'User3',
+        email: 'user3@example.com',
+      },
+    ]);
+
+    console.log('Users created:', users);
+
+    // Create thoughts
+    const thoughts = await Thought.insertMany([
+      {
+        thoughtText: 'This is User1\'s first thought.',
+        username: users[0].username,
+        userId: users[0]._id,
+        reactions: [
+          {
+            reactionBody: 'Great thought!',
+            username: users[1].username,
+          },
+        ],
+      },
+      {
+        thoughtText: 'This is User2\'s first thought.',
+        username: users[1].username,
+        userId: users[1]._id,
+      },
+      {
+        thoughtText: 'This is User3\'s first thought.',
+        username: users[2].username,
+        userId: users[2]._id,
+        reactions: [
+          {
+            reactionBody: 'I love this thought!',
+            username: users[0].username,
+          },
+        ],
+      },
+    ]);
+
+    console.log('Thoughts created:', thoughts);
+
+    // Update users with thoughts
+    await Promise.all(
+      thoughts.map((thought) =>
+        User.findByIdAndUpdate(thought.userId, { $push: { thoughts: thought._id } })
+      )
+    );
+
+    console.log('Users updated with thoughts');
+
+    // Close connection
+    await mongoose.connection.close();
+    console.log('Database seeded and connection closed');
+  } catch (error) {
+    console.error('Error seeding the database:', error);
+    process.exit(1);
   }
-  
-  let userCheck = await connection.db?.listCollections({ name: 'users' }).toArray();
-  if (userCheck?.length) {
-    await connection.dropCollection('users');
+};
+
+seedDatabase();
+
+
+
+/*
+import db from '../config/connection.js';
+import { getThoughts } from '../controllers/thoughtController.js';
+import { User, Thought } from '../models/index.js';
+
+const seed = async () => {
+  await db();
+
+  // Clear the database
+try {
+  await User.deleteMany({});
+  await Thought.deleteMany({});
+  console.log('Cleared the database.');
+} catch (error) {
+  console.error('Error clearing the database:', error);
+}
+  try {
+    // Create users
+    const users = await User.create([
+      {
+        username: 'User1',
+        email: 'user1@gmail.com',
+      },
+      {
+        username: 'User2',
+        email: 'user2@gmail.com',
+      },
+      {
+        username: 'User3',
+        email: 'user3@gmail.com'
+      }
+    ]);
+    console.log('Users created:', users);
+    // create 2 thoughts
+    const thoughts = await Thought.create([
+      {
+        thoughtText: 'Thought 1',
+        username: users[0].username,
+        userId: users[0]._id
+      },
+      {
+        thoughtText: 'Thought 2',
+        username: users[1].username,
+        userId: users[1]._id
+      }
+    ]);
+    console.log('Thoughts created:', thoughts);
+
+  } catch (error) {
+    console.error('Error seeding DB', error);
   }
-
-  const users = [];
-  const applications = getRandomApplications(10);
-
-  for (let i = 0; i < 20; i++) {
-    const fullName = getRandomName();
-    const first = fullName.split(' ')[0];
-    const last = fullName.split(' ')[1];
-
-    users.push({
-      first,
-      last,
-      age: Math.floor(Math.random() * (99 - 18 + 1) + 18),
-    });
+}
+// add thoughts to users
+for (const thought of Thoughts) {
+  const user = await User.findOne({ _id: thought.userId });
+  if (user) {
+    user.thoughts.push(thought);
+    await user.save();
   }
+}
+console.log('Thoughts added to users.');
 
-  await User.insertMany(users);
-  await Application.insertMany(applications);
+// add reactions to random thoughts
+const reactions = [
+  {
+    reactionBody: '👍',
+    username: getRandomUser(users).username,
+    createdAt: new Date(),
+  },
+  {
+    reactionBody: '❤️',
+    username: getRandomUser(users).username,
+    createdAt: new Date(),
+  },
+  {
+    reactionBody: '😆',
+    username: getRandomUser(users).username,
+    createdAt: new Date(),
+  },
+];
 
-  // loop through the saved applications, for each application we need to generate a application response and insert the application responses
-  console.table(users);
-  console.table(applications);
-  console.info('Seeding complete! 🌱');
-  process.exit(0);
-});
+ //seeding DB
+seed();
+
+*/
