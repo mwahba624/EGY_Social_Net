@@ -1,93 +1,86 @@
 import { User, Thought } from '../models/index.js';
-import { Request, Response } from 'express';
 import { Types } from 'mongoose';
+import { Request, Response } from 'express';
 
-
-  // Get all users
-  export const getUsers = async (_req: Request, res: Response) => {
-    try {
-      const users = await User.find();
-      res.json(users);
-    } catch (err) {
-      res.status(500).json(err);
-    }
+// Get all users
+export const getUsers = async (_req: Request, res: Response) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json(err);
   }
+}
 
-  // Get a single user
-  export const getSingleUser = async (req: Request, res: Response) => {
-    try {
-      const user = await User.findOne({ _id: req.params.userId })
-        .select('-__v')
-        .populate('thoughts')
-        .populate('friends');
+// Get a single user
 
-      if (!user) {
-        return res.status(404).json({ message: 'No user with that ID' });
-      }
-
-      res.json(user);
-      return;
-    } catch (err) {
-      res.status(500).json(err);
-      return;
+export const getSingleUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findOne({ _id: req.params.userId })
+      .populate('thoughts') //  Populate the thoughts associated with the user
+      .populate('friends'); // Populate the friends associated with the user
+    if (!user) {
+      return res.status(404).json({ message: 'No User with that ID' });
     }
-  }
 
-  // create a new user
-  export const createUser = async (req: Request, res: Response) => {
-    try {
-      const user = await User.create(req.body);
-      res.json(user);
-    } catch (err) {
-      res.status(500).json(err);
+    res.json(user);
+    return;
+  } catch (err) {
+    res.status(500).json(err);
+    return;
+  }
+}
+
+// Create a new user
+export const createUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.create({
+      username: req.body.username,
+      email: req.body.email,
+    });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+}
+
+// Update a user by its _id by PUT method
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    // update the user by its _id and only update the email field
+    const user = await User.findOneAndUpdate(
+      { _id: req.params.userId }, // Find user by its _id
+      {email: req.body.email}, // The new data to update the user with - only updating email field
+      { new: true, runValidators: true } // Return the updated user and run validation on update
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'No user with that ID' });
     }
-  }
-  export const updateUser = async (req: Request, res: Response) => {
-    try {
-      // Find the user and update it with the data in req.body
-      const user = await User.findOneAndUpdate(
-        { _id: req.params.userId }, // Find user by _id
-        req.body.email, // The new data to update the user with - only updating email field 
-        { new: true, runValidators: true } // Return the updated user and run validation on update
-      );
-  
-      if (!user) {
-        return res.status(404).json({ message: 'No user with that ID' });
-      }
-  
-      res.json(user);
-      return;
-    } catch (err) {
-      res.status(500).json(err);
-      return;
-    }
-  }
 
-  /* 
-      const user = await User.findOneAndUpdate(
-        { _id: req.body.userId },
-        { $addToSet: { thoughts: thought._id } },
-        { new: true }
-      );
-      */
+    res.json(user);
+    return;
+  } catch (err) {
+    res.status(500).json(err);
+    return;
+  }
+}
 
-  // DELETE route to remove a user by its _id
+// DELETE Route 
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    // Step 1: Find and delete all thoughts associated with the user
+    
     const user = await User.findOne({ _id: req.params.userId });
 
     if (!user) {
       return res.status(404).json({ message: 'No user with that ID' });
     }
 
-    // Delete all thoughts that belong to the user
     await Thought.deleteMany({ _id: { $in: user.thoughts } });
 
-    // Step 2: Remove the user from other users' friends list
     await User.updateMany(
-      { friends: req.params.userId }, // Find users who have this user in their friends list
-      { $pull: { friends: req.params.userId } } // Remove the user from their friends list
+      { friends: req.params.userId }, // Find all users where the user to be deleted is in their friend list
+      { $pull: { friends: req.params.userId } } // Remove the user to be deleted from their friend list
     );
 
     // Step 3: Delete the user
@@ -100,7 +93,6 @@ export const deleteUser = async (req: Request, res: Response) => {
     return;
   }
 };
-
 
 // POST: Add a new friend to a user's friend list
 export const addFriend = async (req: Request, res: Response) => {
@@ -172,4 +164,3 @@ export const removeFriend = async (req: Request, res: Response) => {
     return;
   }
 };
-

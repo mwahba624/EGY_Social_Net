@@ -1,4 +1,5 @@
 import { Schema, model } from 'mongoose';
+// Define the User schema
 const userSchema = new Schema({
     username: {
         type: String,
@@ -15,28 +16,26 @@ const userSchema = new Schema({
     thoughts: [
         {
             type: Schema.Types.ObjectId,
-            ref: "thought",
+            ref: "Thought",
         },
     ],
     friends: [
         {
             type: Schema.Types.ObjectId,
-            ref: "user",
+            ref: "User",
         },
     ],
 }, {
     toJSON: {
         virtuals: true,
+        versionKey: false,
     },
     id: false,
 });
-// get total count of friends on retrieval
-userSchema
-    .virtual('friendCount')
-    // Getter
-    .get(function () {
+// Virtual to calculate total count of friends
+userSchema.virtual("friendCount").get(function () {
     return this.friends.length;
 });
-// Initialize our User model
-const User = model('user', userSchema);
+// Initialize the User model
+const User = model('User', userSchema);
 export default User;

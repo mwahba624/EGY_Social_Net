@@ -1,7 +1,24 @@
-import { Schema, model } from 'mongoose';
-import { Types } from 'mongoose'; 
+import { Schema, model, Types, Document } from 'mongoose';
 
-const reactionSchema = new Schema({
+// Interface for a single Reaction
+export interface IReaction extends Document {
+  reactionId: Types.ObjectId;
+  reactionBody: string;
+  username: string;
+  createdAt: Date;
+}
+
+// Interface for the Thought document
+export interface IThought extends Document {
+  thoughtText: string;
+  createdAt: Date;
+  username: string;
+  reactions: IReaction[]; // Array of reactions
+  reactionCount: number; // Virtual property
+}
+
+// Reaction schema
+const reactionSchema = new Schema<IReaction>({
   reactionId: {
     type: Schema.Types.ObjectId,
     default: () => new Types.ObjectId(),
@@ -17,12 +34,19 @@ const reactionSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now,
+    default: () => new Date(),
+    get: (timestamp: Date | number | string) => new Date(timestamp).toLocaleString(),
+  } as any, // Workaround for TypeScript error
+}, {
+  toJSON: {
+    getters: true,
   },
+  id: false,
+  _id: false,
 });
 
 // Thought schema
-const thoughtSchema = new Schema(
+const thoughtSchema = new Schema<IThought>(
   {
     thoughtText: {
       type: String,
@@ -32,29 +56,27 @@ const thoughtSchema = new Schema(
     },
     createdAt: {
       type: Date,
-      default: Date.now,
-    },
-    username: {
-      type: String,
-      required: true,
-    },
-    userId: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      ref: 'User',  
-    },
+      default: () => new Date(),
+      get: (timestamp: Date | number | string) => new Date(timestamp).toLocaleString(),
+    } as any, // Workaround for TypeScript error
     reactions: [reactionSchema],
-  },
+    },
   {
     toJSON: {
       virtuals: true,
+      getters: true,
+      versionKey: false,
     },
     id: false,
   }
 );
-thoughtSchema.virtual("reactionCount").get(function () {
+
+// Virtual for reaction count
+thoughtSchema.virtual('reactionCount').get(function (this: IThought) {
   return this.reactions.length;
 });
-const Thought = model('Thought', thoughtSchema);
+
+// Thought model
+const Thought = model<IThought>('Thought', thoughtSchema);
 
 export default Thought;
